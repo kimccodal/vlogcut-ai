@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VlogCut AI</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, sans-serif; background: #f5f5f5; color: #333; }
+.header { background: white; padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 12px; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.nav { display: flex; gap: 4px; margin-left: auto; }
+.nav-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #ddd; background: transparent; font-size: 13px; cursor: pointer; }
+.nav-btn.active { background: #333; color: white; border-color: #333; }
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+.page { display: none; }
+.page.active { display: block; }
+.btn { border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; color: white; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-dark { background: #333; }
+.btn-green { background: #2e7d32; }
+.btn-blue { background: #1565c0; }
+.btn-purple { background: #6a1b9a; }
+.btn-orange { background: #e65100; }
+.btn-red { background: #c62828; }
+.btn-teal { background: #00695c; }
+
+.upload-card { background: white; border-radius: 12px; padding: 40px 30px; text-align: center; border: 2px dashed #ddd; margin-bottom: 20px; cursor: pointer; }
+.upload-card:hover { border-color: #999; }
+.upload-card h2 { font-size: 18px; margin-bottom: 8px; }
+.upload-card p { font-size: 13px; color: #888; margin-bottom: 20px; }
+#file-input { display: none; }
+
+.progress-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; display: none; }
+.progress-bar { height: 6px; background: #eee; border-radius: 3px; overflow: hidden; margin: 10px 0; }
+.progress-fill { height: 100%; background: #333; border-radius: 3px; width: 0%; transition: width 0.3s; }
+.progress-text { font-size: 13px; color: #666; }
+
+.editor-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.panel { background: white; border-radius: 12px; padding: 16px; display: none; }
+.panel-title { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 12px; }
+video { width: 100%; border-radius: 8px; background: #000; display: block; }
+
+.subtitle-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.btn-group { display: flex; gap: 5px; flex-wrap: wrap; }
+.subtitle-list { display: flex; flex-direction: column; gap: 6px; max-height: 400px; overflow-y: auto; }
+.subtitle-item { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border: 1px solid #eee; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+.subtitle-item:hover { border-color: #ccc; }
+.subtitle-item.active-seg { border-color: #1565c0 !important; background: #e3f2fd !important; }
+.subtitle-item.gag { border-color: #ff9800; background: #fff8e1; }
+.subtitle-item.delete-seg { border-color: #e53935; background: #ffebee; }
+.subtitle-item.bgm-up { border-color: #00695c; background: #e0f2f1; }
+.seg-time { font-size: 10px; color: #999; min-width: 68px; font-family: monospace; line-height: 1.7; }
+.seg-text { flex: 1; border: none; outline: none; font-size: 13px; line-height: 1.5; resize: none; font-family: inherit; background: transparent; }
+.seg-badge { font-size: 10px; padding: 1px 5px; border-radius: 5px; display: inline-block; margin-top: 2px; }
+.badge-gag { background: #ff9800; color: white; }
+.badge-delete { background: #e53935; color: white; }
+.badge-bgm { background: #00695c; color: white; }
+
+.section-card { background: white; border-radius: 12px; padding: 20px; display: none; margin-bottom: 16px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+.section-header h2 { font-size: 15px; font-weight: 600; }
+
+.flow-summary { background: #f3e5f5; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #6a1b9a; margin-bottom: 12px; line-height: 1.6; }
+.edit-order { background: #e8f5e9; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+.edit-order h3 { font-size: 12px; font-weight: 600; color: #2e7d32; margin-bottom: 8px; }
+.edit-order ol { padding-left: 18px; }
+.edit-order li { font-size: 12px; color: #388e3c; line-height: 1.8; }
+.flow-list { display: flex; flex-direction: column; gap: 8px; }
+.flow-item { padding: 10px 14px; border-radius: 10px; border: 1px solid #eee; display: flex; gap: 10px; align-items: flex-start; cursor: pointer; transition: opacity 0.15s; }
+.flow-item:hover { opacity: 0.85; }
+.flow-item.delete { border-color: #ef9a9a; background: #ffebee; }
+.flow-item.gag { border-color: #ffcc80; background: #fff8e1; }
+.flow-item.keep { border-color: #a5d6a7; background: #e8f5e9; }
+.flow-item.bgm_up { border-color: #80cbc4; background: #e0f2f1; }
+.flow-time { font-size: 11px; font-family: monospace; color: #999; min-width: 88px; line-height: 1.8; }
+.flow-content { flex: 1; }
+.flow-reason { font-size: 13px; color: #333; margin-bottom: 4px; }
+.flow-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.flow-type { font-size: 11px; padding: 2px 8px; border-radius: 10px; color: white; }
+.ft-delete { background: #e53935; }
+.ft-gag { background: #ff9800; }
+.ft-keep { background: #2e7d32; }
+.ft-bgm_up { background: #00695c; }
+.flow-conf { font-size: 11px; color: #999; }
+
+.action-bar { display: flex; gap: 8px; flex-wrap: wrap; padding: 14px 16px; background: #fff8e1; border-radius: 10px; margin-bottom: 14px; align-items: center; }
+.action-bar span { font-size: 13px; color: #666; flex: 1; }
+
+.bgm-section { margin-bottom: 16px; }
+.bgm-section h3 { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 10px; }
+.bgm-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+.bgm-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #eee; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+.bgm-item:hover { border-color: #1565c0; background: #e3f2fd; }
+.bgm-item.selected { border-color: #1565c0; background: #e3f2fd; }
+.bgm-name { flex: 1; font-size: 13px; }
+.bgm-play { font-size: 11px; color: #1565c0; }
+.bgm-empty { font-size: 13px; color: #999; padding: 16px; text-align: center; background: #f9f9f9; border-radius: 8px; line-height: 1.8; }
+.volume-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.volume-label { font-size: 12px; color: #666; min-width: 80px; }
+.volume-slider { flex: 1; }
+.volume-val { font-size: 12px; font-weight: 600; min-width: 36px; text-align: right; }
+
+.output-card { background: #e8f5e9; border-radius: 10px; padding: 14px 16px; display: none; }
+.output-card h3 { font-size: 13px; font-weight: 600; color: #2e7d32; margin-bottom: 6px; }
+.output-path { font-size: 12px; color: #388e3c; font-family: monospace; word-break: break-all; }
+
+.yt-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.yt-header h2 { font-size: 16px; font-weight: 600; }
+.yt-list { display: flex; flex-direction: column; gap: 10px; }
+.yt-card { background: white; border-radius: 12px; padding: 16px; border: 1px solid #eee; }
+.yt-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.yt-avatar { width: 36px; height: 36px; border-radius: 50%; background: #eee; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+.yt-info { flex: 1; }
+.yt-name { font-size: 14px; font-weight: 600; }
+.yt-url { font-size: 11px; color: #999; }
+.yt-del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 18px; }
+.yt-del:hover { color: #e53935; }
+.yt-style { font-size: 12px; color: #666; line-height: 1.6; background: #f9f9f9; padding: 10px; border-radius: 8px; margin-bottom: 12px; }
+.ratio-row { display: flex; align-items: center; gap: 10px; }
+.ratio-label { font-size: 12px; color: #666; min-width: 40px; }
+.ratio-slider { flex: 1; }
+.ratio-val { font-size: 13px; font-weight: 600; min-width: 36px; text-align: right; }
+.total-bar { background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #eee; margin-bottom: 10px; display: flex; align-items: center; }
+.total-num { font-size: 15px; font-weight: 600; margin-left: auto; }
+.ok { color: #2e7d32; }
+.over { color: #e53935; }
+
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+.modal-bg.show { display: flex; }
+.modal { background: white; border-radius: 16px; padding: 24px; width: 90%; max-width: 420px; }
+.modal h3 { font-size: 16px; margin-bottom: 16px; }
+.modal-input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 10px; outline: none; font-family: inherit; }
+.modal-input:focus { border-color: #333; }
+.modal-loading { font-size: 13px; color: #666; text-align: center; padding: 6px 0; display: none; }
+.modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.modal-cancel { padding: 8px 16px; border: 1px solid #ddd; border-radius: 8px; background: transparent; cursor: pointer; font-size: 13px; }
+.modal-ok { padding: 8px 16px; border: none; border-radius: 8px; background: #333; color: white; cursor: pointer; font-size: 13px; }
+
+@media (max-width: 700px) { .editor-layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>VlogCut AI</h1>
+  <div class="nav">
+    <button class="nav-btn active" id="nav-subtitle" onclick="showPage('subtitle')">편집</button>
+    <button class="nav-btn" id="nav-youtubers" onclick="showPage('youtubers')">유튜버 DB</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="page active" id="page-subtitle">
+
+    <div class="upload-card" id="upload-card" onclick="document.getElementById('file-input').click()">
+      <h2>영상 불러오기</h2>
+      <p>MP4, MOV 파일 · 10~30분 권장 · 30분 기준 처리 비용 약 150원</p>
+      <button class="btn btn-dark" onclick="event.stopPropagation(); document.getElementById('file-input').click()">영상 선택하기</button>
+      <input type="file" id="file-input" accept="video/*,audio/*">
+    </div>
+
+    <div class="progress-card" id="progress-card">
+      <div class="progress-text" id="progress-text">AI가 자막을 분석하고 있어요...</div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <div style="font-size:12px; color:#999; margin-top:6px;">30분 영상 기준 약 2~3분 소요돼요</div>
+    </div>
+
+    <div class="editor-layout">
+      <div class="panel" id="video-panel">
+        <div class="panel-title">영상 미리보기</div>
+        <video id="video-player" controls></video>
+      </div>
+      <div class="panel" id="subtitle-panel">
+        <div class="subtitle-panel-header">
+          <div class="panel-title" style="margin:0">자막 확인 & 수정</div>
+          <div class="btn-group">
+            <button class="btn btn-purple" id="analyze-btn" onclick="analyzeFlow()">흐름 분석</button>
+            <button class="btn btn-teal" id="silent-btn" onclick="addSilentSubtitles()">무음 센스자막</button>
+            <button class="btn btn-blue" onclick="downloadSRT()">SRT 저장</button>
+          </div>
+        </div>
+        <div class="subtitle-list" id="subtitle-list"></div>
+      </div>
+    </div>
+
+    <div class="section-card" id="flow-card">
+      <div class="section-header">
+        <h2>흐름 분석 결과</h2>
+        <span style="font-size:12px; color:#888;">클릭하면 영상이 해당 구간으로 이동해요</span>
+      </div>
+      <div class="flow-summary" id="flow-summary"></div>
+      <div class="edit-order" id="edit-order" style="display:none">
+        <h3>추천 편집 순서</h3>
+        <ol id="edit-order-list"></ol>
+      </div>
+      <div class="action-bar">
+        <span>삭제 추천 구간을 영상에서 실제로 잘라낼 수 있어요</span>
+        <button class="btn btn-red" id="cut-btn" onclick="cutVideo()">삭제 구간 자르기</button>
+      </div>
+      <div class="flow-list" id="flow-list"></div>
+
+      <div id="bgm-rec-section" style="display:none; margin-top:16px;">
+        <div style="font-size:14px; font-weight:600; margin-bottom:10px; color:#1565c0;">🎵 BGM 추천 (Artlist 검색 키워드)</div>
+        <div id="bgm-rec-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <div id="sfx-rec-section" style="display:none; margin-top:16px;">
+        <div style="font-size:14px; font-weight:600; margin-bottom:10px; color:#e65100;">🔊 효과음 추천 (Artlist SFX 검색 키워드)</div>
+        <div id="sfx-rec-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+    </div>
+
+    <div class="section-card" id="bgm-card">
+      <div class="section-header">
+        <h2>BGM 적용</h2>
+        <button class="btn btn-dark" onclick="loadBGMList()">목록 새로고침</button>
+      </div>
+      <div class="bgm-section">
+        <h3>Artlist에서 다운받은 음악 폴더에 넣어주세요</h3>
+        <div style="font-size:12px; color:#888; margin-bottom:10px;">📁 위치: 바탕화면 → bgm 폴더</div>
+        <div class="bgm-list" id="bgm-list"></div>
+      </div>
+      <div class="volume-row">
+        <span class="volume-label">배경 볼륨</span>
+        <input type="range" class="volume-slider" id="bgm-volume" min="1" max="50" value="25" oninput="document.getElementById('bgm-vol-val').textContent=this.value+'%'">
+        <span class="volume-val" id="bgm-vol-val">25%</span>
+      </div>
+      <div class="volume-row">
+        <span class="volume-label">말할 때 볼륨</span>
+        <input type="range" class="volume-slider" id="duck-volume" min="1" max="20" value="5" oninput="document.getElementById('duck-vol-val').textContent=this.value+'%'">
+        <span class="volume-val" id="duck-vol-val">5%</span>
+      </div>
+      <div style="margin-top:12px;">
+        <button class="btn btn-teal" id="apply-bgm-btn" onclick="applyBGM()" style="width:100%; padding:12px;">BGM 적용하기 (자동 덕킹)</button>
+      </div>
+      <div class="output-card" id="bgm-output">
+        <h3>완성! 다운로드 폴더에 저장됐어요</h3>
+        <div class="output-path" id="bgm-output-path"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="page" id="page-youtubers">
+    <div class="yt-header">
+      <h2>유튜버 DB</h2>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-purple" id="analyze-all-btn" onclick="analyzeAllYoutubers()">Gemini 전체 재분석</button>
+        <button class="btn btn-dark" onclick="showModal()">+ 유튜버 추가</button>
+      </div>
+    </div>
+    <div id="analyze-progress" style="display:none; background:#f3e5f5; border-radius:10px; padding:12px 14px; margin-bottom:10px; font-size:13px; color:#6a1b9a;"></div>
+    <div class="total-bar">
+      <span style="font-size:13px; color:#666;">전체 비중 합계</span>
+      <span class="total-num ok" id="total-ratio">0%</span>
+    </div>
+    <div class="yt-list" id="yt-list"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3>유튜버 추가</h3>
+    <input class="modal-input" type="text" id="inp-name" placeholder="이름 (예: 모하비)">
+    <input class="modal-input" type="text" id="inp-url" placeholder="채널 URL (예: https://www.youtube.com/@Mojave)">
+    <input class="modal-input" type="number" id="inp-ratio" placeholder="비중 % (예: 10)" min="0" max="100">
+    <div class="modal-loading" id="modal-loading">AI가 채널 분석 중이에요... 잠시만요!</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="hideModal()">취소</button>
+      <button class="modal-ok" onclick="addYoutuber()">추가하기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var segments = [];
+var videoFilePath = '';
+var currentVideoPath = '';
+var selectedBGM = '';
+var flowCuts = [];
+var audioPlayer = new Audio();
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'youtubers') loadYoutubers();
+}
+
+function fmtTime(s) {
+  var h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60);
+  return pad(h)+':'+pad(m)+':'+pad(sec);
+}
+function fmtSRT(s) {
+  var h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60), ms = Math.round((s%1)*1000);
+  return pad(h)+':'+pad(m)+':'+pad(sec)+','+pad3(ms);
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+function pad3(n) { return String(n).padStart(3,'0'); }
+
+document.getElementById('file-input').addEventListener('change', function() {
+  var file = this.files[0];
+  if (!file) return;
+  videoFilePath = file.path || file.name;
+  currentVideoPath = file.path || '';
+
+  var vp = document.getElementById('video-player');
+  vp.src = URL.createObjectURL(file);
+
+  document.getElementById('upload-card').style.display = 'none';
+  document.getElementById('progress-card').style.display = 'block';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('progress-text').textContent = 'AI가 자막을 분석하고 있어요...';
+
+  var progress = 0;
+  var interval = setInterval(function() {
+    progress = Math.min(progress + 1.5, 85);
+    document.getElementById('progress-fill').style.width = progress + '%';
+  }, 800);
+
+  var formData = new FormData();
+  formData.append('video', file);
+
+  fetch('/transcribe', { method: 'POST', body: formData })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      clearInterval(interval);
+      document.getElementById('progress-fill').style.width = '100%';
+      document.getElementById('progress-text').textContent = '자막 완성! 흐름 분석과 BGM 적용도 해보세요.';
+      setTimeout(function() {
+        document.getElementById('progress-card').style.display = 'none';
+        document.getElementById('video-panel').style.display = 'block';
+        document.getElementById('subtitle-panel').style.display = 'block';
+        document.getElementById('bgm-card').style.display = 'block';
+        segments = data.segments;
+        if (data.video_path) { currentVideoPath = data.video_path; }
+        renderSubtitles(null);
+        loadBGMList();
+      }, 500);
+    })
+    .catch(function(e) {
+      clearInterval(interval);
+      document.getElementById('progress-text').textContent = '오류가 발생했어요.';
+    });
+});
+
+function renderSubtitles(highlights) {
+  var list = document.getElementById('subtitle-list');
+  list.innerHTML = '';
+  for (var i = 0; i < segments.length; i++) {
+    var seg = segments[i];
+    var item = document.createElement('div');
+    item.className = 'subtitle-item';
+    var badge = '';
+    if (highlights) {
+      for (var j = 0; j < highlights.length; j++) {
+        var h = highlights[j];
+        if (seg.start >= h.start && seg.start <= h.end) {
+          if (h.type === 'gag') { item.classList.add('gag'); badge = '<span class="seg-badge badge-gag">개그</span>'; }
+          else if (h.type === 'delete') { item.classList.add('delete-seg'); badge = '<span class="seg-badge badge-delete">삭제</span>'; }
+          else if (h.type === 'bgm_up') { item.classList.add('bgm-up'); badge = '<span class="seg-badge badge-bgm">BGM↑</span>'; }
+          break;
+        }
+      }
+    }
+    item.innerHTML = '<div class="seg-time">'+fmtTime(seg.start)+'<br>'+fmtTime(seg.end)+(badge?'<br>'+badge:'')+'</div><textarea class="seg-text" rows="2">'+seg.text+'</textarea>';
+    (function(index, el, startTime) {
+      el.addEventListener('click', function() {
+        document.querySelectorAll('.subtitle-item').forEach(function(s) { s.classList.remove('active-seg'); });
+        el.classList.add('active-seg');
+        var vp = document.getElementById('video-player');
+        if (vp) { vp.currentTime = startTime; }
+      });
+      el.querySelector('.seg-text').addEventListener('input', function() { segments[index].text = this.value; });
+    })(i, item, seg.start);
+    list.appendChild(item);
+  }
+}
+
+function downloadSRT() {
+  if (!segments || segments.length === 0) { alert('먼저 영상을 업로드해주세요!'); return; }
+  var srt = '';
+  for (var i = 0; i < segments.length; i++) {
+    srt += (i+1)+'\n'+fmtSRT(segments[i].start)+' --> '+fmtSRT(segments[i].end)+'\n'+segments[i].text+'\n\n';
+  }
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([srt], {type:'text/plain;charset=utf-8'}));
+  a.download = 'subtitles.srt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function analyzeFlow() {
+  if (!segments || segments.length === 0) { alert('먼저 영상을 업로드해주세요!'); return; }
+  var btn = document.getElementById('analyze-btn');
+  btn.textContent = '분석 중...'; btn.disabled = true;
+  fetch('/analyze-flow', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({segments: segments})
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    btn.textContent = '흐름 분석'; btn.disabled = false;
+    if (data.error) { alert('오류: ' + data.error); return; }
+    flowCuts = data.cuts || [];
+    document.getElementById('flow-card').style.display = 'block';
+    document.getElementById('flow-summary').textContent = data.summary;
+    if (data.edit_order && data.edit_order.length > 0) {
+      document.getElementById('edit-order').style.display = 'block';
+      var ol = document.getElementById('edit-order-list');
+      ol.innerHTML = '';
+      data.edit_order.forEach(function(step) {
+        var li = document.createElement('li'); li.textContent = step; ol.appendChild(li);
+      });
+    }
+    renderFlowResults(data.cuts);
+    renderSubtitles(data.cuts);
+    if (data.bgm_recommendations && data.bgm_recommendations.length > 0) {
+      document.getElementById('bgm-rec-section').style.display = 'block';
+      var bgmList = document.getElementById('bgm-rec-list');
+      bgmList.innerHTML = '';
+      data.bgm_recommendations.forEach(function(rec) {
+        var div = document.createElement('div');
+        div.style.cssText = 'background:#e3f2fd; border-radius:10px; padding:12px 14px; border:1px solid #90caf9;';
+        var keywords = rec.artlist_keywords.map(function(kw) {
+          return '<span onclick="openArtlistBGM(this)" data-kw="'+kw+'" style="display:inline-block; background:#1565c0; color:white; font-size:12px; padding:3px 10px; border-radius:20px; margin:2px; cursor:pointer;">'+kw+'</span>';
+        }).join('');
+        var allKwStr = JSON.stringify(rec.artlist_keywords).replace(/"/g, "&quot;");
+        div.innerHTML = '<div style="font-size:13px; font-weight:600; color:#0d47a1; margin-bottom:6px;">'+rec.mood+'</div><div style="font-size:12px; color:#555; margin-bottom:8px;">'+rec.reason+'</div><div>'+keywords+'</div><button onclick="openArtlistBGMAll('+allKwStr+')" style="margin-top:8px; background:#0d47a1; color:white; border:none; padding:6px 14px; border-radius:20px; font-size:12px; cursor:pointer;">키워드 전체로 한번에 검색 →</button>';
+        bgmList.appendChild(div);
+      });
+    }
+    if (data.sfx_recommendations && data.sfx_recommendations.length > 0) {
+      document.getElementById('sfx-rec-section').style.display = 'block';
+      var sfxList = document.getElementById('sfx-rec-list');
+      sfxList.innerHTML = '';
+      data.sfx_recommendations.forEach(function(rec) {
+        var div = document.createElement('div');
+        div.style.cssText = 'background:#fff3e0; border-radius:10px; padding:12px 14px; border:1px solid #ffcc80; cursor:pointer;';
+        var keywords = rec.artlist_keywords.map(function(kw) {
+          return '<span onclick="openArtlistSFX(this)" data-kw="'+kw+'" style="display:inline-block; background:#e65100; color:white; font-size:12px; padding:3px 10px; border-radius:20px; margin:2px; cursor:pointer;">'+kw+'</span>';
+        }).join('');
+        var timeStr = rec.timestamp ? fmtTime(rec.timestamp) : '';
+        div.innerHTML = '<div style="font-size:13px; font-weight:600; color:#bf360c; margin-bottom:6px;">'+(timeStr?'['+timeStr+'] ':'')+rec.scene+'</div><div>'+keywords+'</div><div style="font-size:11px; color:#888; margin-top:6px;">키워드 클릭 → Artlist SFX에서 바로 검색돼요</div><button onclick="openArtlistSFXAll('+JSON.stringify(rec.artlist_keywords)+')" style="margin-top:8px; background:#bf360c; color:white; border:none; padding:6px 14px; border-radius:20px; font-size:12px; cursor:pointer;">키워드 전체로 한번에 검색 →</button>';
+        if (rec.timestamp) {
+          div.addEventListener('click', function(e) {
+            if (e.target.tagName === 'SPAN') return;
+            var vp = document.getElementById('video-player');
+            if (vp) { vp.currentTime = rec.timestamp; vp.play(); }
+          });
+        }
+        sfxList.appendChild(div);
+      });
+    }
+    document.getElementById('flow-card').scrollIntoView({behavior:'smooth'});
+  })
+  .catch(function(e) { btn.textContent = '흐름 분석'; btn.disabled = false; alert('오류: '+e.message); });
+}
+
+function addSilentSubtitles() {
+  if (!segments || segments.length === 0) { alert("먼저 영상을 업로드해주세요!"); return; }
+  var btn = document.getElementById("silent-btn");
+  btn.textContent = "분석 중..."; btn.disabled = true;
+  var vp = document.getElementById("video-player");
+  var duration = vp ? vp.duration : 0;
+  fetch("/silent-subtitles", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({segments: segments, duration: duration})
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    btn.textContent = "무음 센스자막"; btn.disabled = false;
+    if (data.error) { alert("오류: " + data.error); return; }
+    if (!data.subtitles || data.subtitles.length === 0) {
+      alert(data.message || "무음 구간이 없어요!"); return;
+    }
+    data.subtitles.forEach(function(sub) {
+      segments.push({id: segments.length, start: sub.start, end: sub.end, text: sub.text, isSilent: true});
+    });
+    segments.sort(function(a, b) { return a.start - b.start; });
+    renderSubtitles(null);
+    alert("무음 구간 " + data.subtitles.length + "곳에 센스 자막을 추가했어요!");
+  })
+  .catch(function(e) {
+    btn.textContent = "무음 센스자막"; btn.disabled = false;
+    alert("오류: " + e.message);
+  });
+}
+
+function openArtlistBGM(el) {
+  var kw = el.getAttribute('data-kw');
+  window.open('https://artlist.io/royalty-free-music?search=' + encodeURIComponent(kw), '_blank');
+}
+function openArtlistSFX(el) {
+  var kw = el.getAttribute('data-kw');
+  window.open('https://artlist.io/royalty-free-sound-effects?search=' + encodeURIComponent(kw), '_blank');
+}
+function openArtlistBGMAll(keywords) {
+  var combined = keywords.join(' ');
+  window.open('https://artlist.io/royalty-free-music?search=' + encodeURIComponent(combined), '_blank');
+}
+function openArtlistSFXAll(keywords) {
+  var combined = keywords.join(' ');
+  window.open('https://artlist.io/royalty-free-sound-effects?search=' + encodeURIComponent(combined), '_blank');
+}
+function renderFlowResults(cuts) {
+  var list = document.getElementById('flow-list');
+  list.innerHTML = '';
+  for (var i = 0; i < cuts.length; i++) {
+    var cut = cuts[i];
+    var item = document.createElement('div');
+    item.className = 'flow-item ' + cut.type;
+    var labels = {delete:'삭제 추천', gag:'개그 포인트', keep:'유지', bgm_up:'BGM 올리기'};
+    var typeLabel = labels[cut.type] || cut.type;
+    var confLabel = cut.confidence === 'high' ? '확신 높음' : '확인 권장';
+    item.innerHTML = '<div class="flow-time">'+fmtTime(cut.start)+'<br>~ '+fmtTime(cut.end)+'</div><div class="flow-content"><div class="flow-reason">'+cut.reason+'</div><div class="flow-meta"><span class="flow-type ft-'+cut.type+'">'+typeLabel+'</span><span class="flow-conf">'+confLabel+'</span></div></div>';
+    (function(startTime) {
+      item.addEventListener('click', function() {
+        var vp = document.getElementById('video-player');
+        if (vp) { vp.currentTime = startTime; vp.play(); }
+      });
+    })(cut.start);
+    list.appendChild(item);
+  }
+}
+
+function cutVideo() {
+  if (!currentVideoPath) { alert('영상 경로를 찾을 수 없어요. 웹 브라우저에서는 보안상 파일 경로에 직접 접근이 어려워요.\n\n대신 SRT 파일을 CapCut에서 활용해주세요!'); return; }
+  var deleteCuts = flowCuts.filter(function(c) { return c.type === 'delete'; });
+  if (deleteCuts.length === 0) { alert('삭제 추천 구간이 없어요!'); return; }
+  if (!confirm(deleteCuts.length + '개 구간을 삭제할까요?')) return;
+  var btn = document.getElementById('cut-btn');
+  btn.textContent = '처리 중...'; btn.disabled = true;
+  fetch('/cut-video', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({video_path: currentVideoPath, cuts: flowCuts})
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    btn.textContent = '삭제 구간 자르기'; btn.disabled = false;
+    if (data.error) { alert('오류: '+data.error); return; }
+    currentVideoPath = data.output_path;
+    var vp = document.getElementById('video-player');
+    vp.src = '/output-preview?' + Date.now();
+    alert('완료! 다운로드 폴더에서 확인하세요.');
+  })
+  .catch(function(e) { btn.textContent = '삭제 구간 자르기'; btn.disabled = false; alert('오류: '+e.message); });
+}
+
+function loadBGMList() {
+  fetch('/bgm-list')
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      var list = document.getElementById('bgm-list');
+      list.innerHTML = '';
+      if (data.bgms.length === 0) {
+        list.innerHTML = '<div class="bgm-empty">📂 바탕화면의 <b>bgm</b> 폴더에<br>Artlist에서 다운받은 음악 파일을 넣어주세요<br><br>MP3, WAV, M4A, AAC, FLAC 지원</div>';
+        return;
+      }
+      data.bgms.forEach(function(bgm) {
+        var item = document.createElement('div');
+        item.className = 'bgm-item';
+        item.innerHTML = '<span class="bgm-name">🎵 '+bgm.name+'</span><span class="bgm-play">▶ 미리듣기</span>';
+        item.addEventListener('click', function() {
+          document.querySelectorAll('.bgm-item').forEach(function(b) { b.classList.remove('selected'); });
+          item.classList.add('selected');
+          selectedBGM = bgm.file;
+          audioPlayer.pause();
+          audioPlayer.src = '/bgm/' + bgm.file;
+          audioPlayer.play();
+        });
+        list.appendChild(item);
+      });
+    });
+}
+
+function applyBGM() {
+  if (!selectedBGM) { alert('BGM을 선택해주세요!'); return; }
+  if (!currentVideoPath) { alert('영상을 먼저 업로드해주세요!'); return; }
+  var bgmVol = parseInt(document.getElementById('bgm-volume').value) / 100;
+  var duckVol = parseInt(document.getElementById('duck-volume').value) / 100;
+  var btn = document.getElementById('apply-bgm-btn');
+  btn.textContent = 'BGM 적용 중... (시간이 걸릴 수 있어요)'; btn.disabled = true;
+  fetch('/apply-bgm', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({video_path: currentVideoPath, bgm_file: selectedBGM, segments: segments, bgm_volume: bgmVol, duck_volume: duckVol})
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    btn.textContent = 'BGM 적용하기 (자동 덕킹)'; btn.disabled = false;
+    if (data.error) { alert('오류: '+data.error); return; }
+    fetch('/save-video', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({source_path: data.output_path, save_name: 'vlogcut_bgm_'+Date.now()+'.mp4'})
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(saved) {
+      var out = document.getElementById('bgm-output');
+      out.style.display = 'block';
+      document.getElementById('bgm-output-path').textContent = saved.saved_to;
+      out.scrollIntoView({behavior:'smooth'});
+    });
+  })
+  .catch(function(e) { btn.textContent = 'BGM 적용하기 (자동 덕킹)'; btn.disabled = false; alert('오류: '+e.message); });
+}
+
+function loadYoutubers() {
+  fetch('/youtubers').then(function(res) { return res.json(); }).then(function(data) { renderYoutubers(data.youtubers); });
+}
+
+function renderYoutubers(list) {
+  var container = document.getElementById('yt-list');
+  container.innerHTML = '';
+  var total = 0;
+  for (var i = 0; i < list.length; i++) { total += list[i].ratio || 0; }
+  var totalEl = document.getElementById('total-ratio');
+  totalEl.textContent = total+'%';
+  totalEl.className = 'total-num '+(total===100?'ok':'over');
+  for (var i = 0; i < list.length; i++) {
+    var y = list[i];
+    var card = document.createElement('div');
+    card.className = 'yt-card';
+    card.innerHTML = '<div class="yt-card-top"><div class="yt-avatar">'+y.name[0]+'</div><div class="yt-info"><div class="yt-name">'+y.name+'</div><div class="yt-url">'+y.url+'</div></div><button class="yt-del" onclick="deleteYoutuber('+y.id+')">✕</button></div><div class="yt-style">'+y.style+'</div><div class="ratio-row"><span class="ratio-label">비중</span><input type="range" class="ratio-slider" min="0" max="100" value="'+y.ratio+'" data-id="'+y.id+'"><span class="ratio-val" id="rv-'+y.id+'">'+y.ratio+'%</span></div>';
+    container.appendChild(card);
+    card.querySelector('.ratio-slider').addEventListener('input', function() {
+      var id = parseInt(this.getAttribute('data-id')), val = parseInt(this.value);
+      document.getElementById('rv-'+id).textContent = val+'%';
+      fetch('/youtubers/update-ratio', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:id,ratio:val})}).then(function() { loadYoutubers(); });
+    });
+  }
+}
+
+function deleteYoutuber(id) {
+  if (!confirm('삭제할까요?')) return;
+  fetch('/youtubers/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:id})}).then(function() { loadYoutubers(); });
+}
+
+function analyzeAllYoutubers() {
+  var btn = document.getElementById('analyze-all-btn');
+  var progress = document.getElementById('analyze-progress');
+  btn.textContent = '분석 중...'; btn.disabled = true;
+  progress.style.display = 'block';
+  progress.textContent = 'Gemini가 유튜버 4명을 분석하고 있어요... 1~2분 소요돼요';
+  fetch('/youtubers/analyze-all', { method: 'POST' })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      btn.textContent = 'Gemini 전체 재분석'; btn.disabled = false;
+      if (data.success) {
+        var success = data.results.filter(function(r) { return r.success; }).length;
+        var fail = data.results.filter(function(r) { return !r.success; }).length;
+        progress.style.background = '#e8f5e9'; progress.style.color = '#2e7d32';
+        progress.textContent = '완료! ' + success + '명 성공' + (fail > 0 ? ', ' + fail + '명 실패' : '') + ' — 이제 흐름 분석하면 유튜버 스타일이 반영돼요!';
+        loadYoutubers();
+      } else {
+        progress.style.background = '#ffebee'; progress.style.color = '#c62828';
+        progress.textContent = '오류가 발생했어요.';
+      }
+    })
+    .catch(function(e) {
+      btn.textContent = 'Gemini 전체 재분석'; btn.disabled = false;
+      progress.style.background = '#ffebee'; progress.style.color = '#c62828';
+      progress.textContent = '오류: ' + e.message;
+    });
+}
+
+function showModal() { document.getElementById('modal').classList.add('show'); }
+function hideModal() {
+  document.getElementById('modal').classList.remove('show');
+  document.getElementById('inp-name').value = '';
+  document.getElementById('inp-url').value = '';
+  document.getElementById('inp-ratio').value = '';
+  document.getElementById('modal-loading').style.display = 'none';
+}
+
+function addYoutuber() {
+  var name = document.getElementById('inp-name').value.trim();
+  var url = document.getElementById('inp-url').value.trim();
+  var ratio = parseInt(document.getElementById('inp-ratio').value) || 0;
+  if (!url) { alert('URL을 입력해주세요!'); return; }
+  document.getElementById('modal-loading').style.display = 'block';
+  fetch('/youtubers/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name,url:url,ratio:ratio})})
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    document.getElementById('modal-loading').style.display = 'none';
+    if (data.success) { hideModal(); loadYoutubers(); }
+    else { alert('오류: '+data.error); }
+  })
+  .catch(function(e) { document.getElementById('modal-loading').style.display = 'none'; alert('오류가 발생했어요.'); });
+}
+</script>
+</body>
+</html>
