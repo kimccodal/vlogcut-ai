@@ -30,7 +30,10 @@ def get_gemini_client():
 if not os.path.exists(BGM_FOLDER):
     os.makedirs(BGM_FOLDER)
 if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+    try:
+        os.makedirs(UPLOAD_FOLDER)
+    except:
+        pass
 
 current_video_path = ""
 
@@ -200,12 +203,17 @@ def transcribe():
         return jsonify({"error": "파일이 없어요"}), 400
     file = request.files["video"]
     filename = file.filename or "video.mp4"
-    save_path = os.path.join(UPLOAD_FOLDER, filename)
-    file.save(save_path)
-    current_video_path = os.path.abspath(save_path)
+
+    # 임시 파일로 저장 (메모리 기반)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1] or '.mp4') as tmp:
+        file.save(tmp.name)
+        tmp_path = tmp.name
+
+    current_video_path = tmp_path
+
     try:
         client = openai.OpenAI(api_key=OPENAI_API_KEY)
-        with open(current_video_path, "rb") as audio_file:
+        with open(tmp_path, "rb") as audio_file:
             transcript = client.audio.transcriptions.create(
                 model="whisper-1",
                 file=audio_file,
