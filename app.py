@@ -19,7 +19,13 @@ DB_FILE = "youtubers.json"
 BGM_FOLDER = "bgm"
 UPLOAD_FOLDER = "uploads"
 
-gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+_gemini_client = None
+
+def get_gemini_client():
+    global _gemini_client
+    if _gemini_client is None:
+        _gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+    return _gemini_client
 
 if not os.path.exists(BGM_FOLDER):
     os.makedirs(BGM_FOLDER)
@@ -82,7 +88,7 @@ def analyze_youtuber_with_gemini(name, url):
 }}
 """
     
-    response = gemini_client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+    response = get_gemini_client().models.generate_content(model='gemini-2.5-flash', contents=prompt)
     text = response.text.strip()
     if text.startswith("```"):
         text = text.split("```")[1]
@@ -273,18 +279,18 @@ BGM은 최대 2개, 효과음은 최대 3개만 추천해주세요.
         # 영상 파일이 있으면 Gemini에 직접 업로드해서 분석
         if current_video_path and os.path.exists(current_video_path):
             import time as _time
-            uploaded_file = gemini_client.files.upload(file=current_video_path)
+            uploaded_file = get_gemini_client().files.upload(file=current_video_path)
             for _ in range(20):
-                file_info = gemini_client.files.get(name=uploaded_file.name)
+                file_info = get_gemini_client().files.get(name=uploaded_file.name)
                 if file_info.state.name == "ACTIVE":
                     break
                 _time.sleep(2)
-            response = gemini_client.models.generate_content(
+            response = get_gemini_client().models.generate_content(
                 model='gemini-2.5-flash',
                 contents=[file_info, prompt]
             )
         else:
-            response = gemini_client.models.generate_content(
+            response = get_gemini_client().models.generate_content(
                 model='gemini-2.5-flash',
                 contents=prompt
             )
@@ -439,11 +445,11 @@ def silent_subtitles():
         style_prompt, _, _ = get_combined_style()
 
         # 영상 파일 Gemini에 업로드 후 ACTIVE 상태 대기
-        uploaded_file = gemini_client.files.upload(file=current_video_path)
+        uploaded_file = get_gemini_client().files.upload(file=current_video_path)
         # ACTIVE 상태가 될 때까지 대기
         import time as _time
         for _ in range(20):
-            file_info = gemini_client.files.get(name=uploaded_file.name)
+            file_info = get_gemini_client().files.get(name=uploaded_file.name)
             if file_info.state.name == "ACTIVE":
                 break
             _time.sleep(2)
@@ -480,7 +486,7 @@ def silent_subtitles():
   ]
 }}
 """
-        response = gemini_client.models.generate_content(
+        response = get_gemini_client().models.generate_content(
             model='gemini-2.5-flash',
             contents=[uploaded_file, prompt]
         )
